@@ -1,0 +1,9 @@
+[
+  {
+    "key": "cmd+r",
+    "command": "workbench.action.tasks.runTask",
+    "args": "Run: LÖVE",
+    "when": "workbenchState == 'workspace'"
+  }
+]
+

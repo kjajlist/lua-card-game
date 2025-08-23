@@ -1,0 +1,55 @@
+# Lua
+*.lua~
+*.lua.bak
+*.lua.swp
+*.lua.swo
+
+# LÖVE (Love2D) specific
+*.love
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE/Editor files
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Build artifacts
+build/
+dist/
+*.exe
+*.app
+*.dmg
+
+# Dependencies (if you add any package managers later)
+node_modules/
+vendor/
+
+# Game saves (if your game creates save files)
+saves/
+*.save
+
+# Backup files
+*.bak
+*.backup
