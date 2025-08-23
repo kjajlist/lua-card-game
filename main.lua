@@ -236,6 +236,13 @@ function updateCardAnimations(dt)
                 GameState.isWaitingForDiscard = false
                 GameState.numReplacementsToDraw = 0
                 GameState.discardAnimCounter = 0
+                
+                -- Set game phase back to "playing" after discard animation completes
+                if GameState.gamePhase ~= "game_over" and GameState.gamePhase ~= "shop" then
+                    GameState.gamePhase = "playing"
+                    print("Discard animation completed, game phase set to 'playing'")
+                end
+                
                 if numReplacements > 0 then
                     print("DEBUG: Drawing replacement cards to reach target hand size")
                     if drawCardsFromCore then
@@ -985,14 +992,24 @@ function love.update(dt)
         local isPotionAnimating = GameState.potionDisplay and GameState.potionDisplay.isAnimatingFill
         local isBubblingActive = GameState.potionDisplay and GameState.potionDisplay.isBubbling
         local isWaitingForDiscard = GameState.isWaitingForDiscard
-        local notInPotionDecision = (GameState.gamePhase ~= "potion_decision")
+        local isInPotionDecision = (GameState.gamePhase == "potion_decision")
+        local hasPendingPotionChoice = (GameState.pendingPotionChoice ~= nil)
 
-        if not isPotionAnimating and not isBubblingActive and not isWaitingForDiscard and notInPotionDecision then
-            print("love.update: Conditions met to enter shop phase (animations done, not in potion decision).")
+        -- If we're in potion decision phase, wait for the player to make their choice
+        if isInPotionDecision then
+            print("love.update: Round completion pending, but currently in potion_decision phase. Shop deferred.")
+        -- If we have a pending potion choice but not in potion decision phase, show the overlay
+        elseif hasPendingPotionChoice and not isInPotionDecision then
+            print("love.update: Pending potion choice detected, showing potion decision overlay.")
+            GameState.gamePhase = "potion_decision"
+            if Dependencies.overlayManager then
+                Dependencies.overlayManager:show("potionDecision")
+            end
+        -- If all animations are done and no pending choices, enter shop phase
+        elseif not isPotionAnimating and not isBubblingActive and not isWaitingForDiscard and not isInPotionDecision and not hasPendingPotionChoice then
+            print("love.update: Conditions met to enter shop phase (animations done, potion decision completed).")
             GameState.roundCompletionPending = false
             Dependencies.coreGame.enterShopPhase(GameState, Config, Dependencies)
-        elseif GameState.gamePhase == "potion_decision" then
-            print("love.update: Round completion pending, but currently in potion_decision phase. Shop deferred.")
         end
     end
 

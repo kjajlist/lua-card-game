@@ -1152,8 +1152,9 @@ function CoreGame.drinkPotion(gameState, config, dependencies)
             dependencies.overlayManager:show("gameOver")
         end
     else
-        -- Only set to playing if the game isn't ending
-        gameState.gamePhase = "playing"
+        -- Don't set game phase to "playing" immediately - let the discard animation complete first
+        -- The game phase will be set to "playing" when the discard animation finishes
+        print("Potion decision completed, waiting for discard animation to finish...")
     end
 end
 
@@ -1193,8 +1194,9 @@ function CoreGame.sellPotion(gameState, config, dependencies)
             dependencies.overlayManager:show("gameOver")
         end
     else
-        -- Only set to playing if the game isn't ending
-        gameState.gamePhase = "playing"
+        -- Don't set game phase to "playing" immediately - let the discard animation complete first
+        -- The game phase will be set to "playing" when the discard animation finishes
+        print("Potion decision completed, waiting for discard animation to finish...")
     end
 end
 
