@@ -252,7 +252,6 @@ function PotionDecisionOverlay:draw()
     local bottleVisualY = currentY + bottleVisualHeight / 2 
     
     if helpers.drawPotionBottle then
-        print(string.format("PotionDecisionOverlay: Calling helpers.drawPotionBottle for '%s' with bottle type '%s'", pendingPotion.name or "Unknown", bottleDisplayData.bottle or "default"))
         -- The 'theme' argument passed here is self.theme (which is Dependencies.theme from main.lua)
         -- The wrapper in main.lua's Dependencies.theme.helpers is responsible for calling Draw.drawPotionBottle with GameState, Config, Dependencies
         helpers.drawPotionBottle(bottleVisualX, bottleVisualY, 

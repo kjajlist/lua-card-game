@@ -735,16 +735,16 @@ function love.load()
 
     local goalConf = Config.UI.goalDisplay or {}
     UIState.Regions.Goal = { x=spacingM, y=spacingS, width=sW-2*spacingM, height=goalConf.height or 80 }; currentY = UIState.Regions.Goal.y+UIState.Regions.Goal.height+spacingM
-    UIState.Regions.TopBar={x=0,y=currentY,width=sW,height=(Config.UI.sortButton.height or 36)}; currentY=UIState.Regions.TopBar.y+UIState.Regions.TopBar.height+spacingM
+    UIState.Regions.TopBar={x=0,y=currentY+20,width=sW,height=(Config.UI.sortButton.height or 36)}; currentY=UIState.Regions.TopBar.y+UIState.Regions.TopBar.height+spacingM
     UIState.Regions.InfoArea={x=0,y=currentY,width=sW,height=(uiLineH*2)+spacingM}; currentY=UIState.Regions.InfoArea.y+UIState.Regions.InfoArea.height+spacingM
     local pAreaCfg=Config.UI.potionDisplayArea or {}; local pAreaW=sW*0.8; local pAreaX=(sW-pAreaW)/2
     UIState.Regions.PotionArea={x=pAreaX,y=currentY,width=pAreaW,height=pAreaCfg.height or 140}; currentY=UIState.Regions.PotionArea.y+UIState.Regions.PotionArea.height+spacingM
     local potPCfg=Config.UI.potentialPotionDisplay or {}; local potPW=potPCfg.width or 300; local potPH=potPCfg.height or 75; local potPX=(sW-potPW)/2
     -- Move potential potion display higher up with extra spacing from hand area
-    UIState.Regions.PotentialPotionArea={x=potPX,y=currentY,width=potPW,height=potPH}; currentY=UIState.Regions.PotentialPotionArea.y+UIState.Regions.PotentialPotionArea.height+spacingM*2
+    UIState.Regions.PotentialPotionArea={x=potPX,y=currentY-140,width=potPW,height=potPH}; currentY=UIState.Regions.PotentialPotionArea.y+UIState.Regions.PotentialPotionArea.height+spacingM*2
     local btmBtnH=(Config.UI.discardButton.height or 48); local btmBtnPY=(Config.UI.discardButton.padding or spacingM)
     UIState.Regions.BottomBar={x=0,y=sH-btmBtnH-btmBtnPY,width=sW,height=btmBtnH}
-    Config.Layout.handBaseY=currentY; UIState.Regions.HandArea={x=0,y=Config.Layout.handBaseY-(Config.Layout.handArcDepth or 0),width=sW,height=(UIState.Regions.BottomBar.y-spacingM)-(Config.Layout.handBaseY-(Config.Layout.handArcDepth or 0))}
+    Config.Layout.handBaseY=currentY+20; UIState.Regions.HandArea={x=0,y=Config.Layout.handBaseY-(Config.Layout.handArcDepth or 0),width=sW,height=(UIState.Regions.BottomBar.y-spacingM)-(Config.Layout.handBaseY-(Config.Layout.handArcDepth or 0))}
     
     -- Update Config with absolute positions if any drawing functions rely on these directly (should ideally use regions from UIState)
     Config.UI.goalDisplay.x = UIState.Regions.Goal.x; Config.UI.goalDisplay.y = UIState.Regions.Goal.y; Config.UI.goalDisplay.width = UIState.Regions.Goal.width
