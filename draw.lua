@@ -77,6 +77,62 @@ function Draw.drawCardObject(card, config, dependencies, gameState)
         love.graphics.setColor(glowColor[1], glowColor[2], glowColor[3], card.glowIntensity * 0.5)
         love.graphics.rectangle("fill", -5, -5, width + 10, height + 10, cornerRadius + 2, cornerRadius + 2)
     end
+    
+    -- Apply spell sparkle effect if active
+    if card.spellSparkleEffect and card.spellSparkleEffect.intensity > 0 then
+        local time = love.timer.getTime()
+        local intensity = card.spellSparkleEffect.intensity
+        
+        -- Create more prominent pulsing glow effect with multiple layers
+        local pulseIntensity = (math.sin(time * 6) + 1) * 0.5 * intensity * 0.7
+        local sparkleColor = colors.spellTarget or {0.8, 0.4, 1.0, 1} -- Purple sparkle color
+        
+        -- Outer glow (larger, more diffuse)
+        love.graphics.setColor(sparkleColor[1], sparkleColor[2], sparkleColor[3], pulseIntensity * 0.3)
+        love.graphics.rectangle("fill", -8, -8, width + 16, height + 16, cornerRadius + 4, cornerRadius + 4)
+        
+        -- Middle glow
+        love.graphics.setColor(sparkleColor[1], sparkleColor[2], sparkleColor[3], pulseIntensity * 0.5)
+        love.graphics.rectangle("fill", -5, -5, width + 10, height + 10, cornerRadius + 2, cornerRadius + 2)
+        
+        -- Inner glow (brightest)
+        love.graphics.setColor(sparkleColor[1], sparkleColor[2], sparkleColor[3], pulseIntensity)
+        love.graphics.rectangle("fill", -2, -2, width + 4, height + 4, cornerRadius + 1, cornerRadius + 1)
+        
+        -- Add more sparkle particles around the card (increased from 8 to 12)
+        for i = 1, 12 do
+            local angle = (i / 12) * math.pi * 2 + time * 3 -- Faster rotating sparkles
+            local sparkleRadius = 35 + 15 * math.sin(time * 4 + i) -- Larger varying distance
+            local sparkleX = (width / 2) + math.cos(angle) * sparkleRadius
+            local sparkleY = (height / 2) + math.sin(angle) * sparkleRadius
+            local sparkleSize = 3 + math.sin(time * 5 + i) * 2 -- Larger pulsing size
+            
+            -- Main sparkle particle (brighter)
+            love.graphics.setColor(sparkleColor[1], sparkleColor[2], sparkleColor[3], intensity)
+            love.graphics.circle("fill", sparkleX, sparkleY, sparkleSize)
+            
+            -- Bright white center
+            love.graphics.setColor(1, 1, 1, intensity * 0.9)
+            love.graphics.circle("fill", sparkleX, sparkleY, sparkleSize * 0.6)
+            
+            -- Enhanced sparkle cross effect (larger and brighter)
+            love.graphics.setColor(1, 1, 1, intensity * 0.8)
+            love.graphics.rectangle("fill", sparkleX - sparkleSize * 2, sparkleY - 1, sparkleSize * 4, 2)
+            love.graphics.rectangle("fill", sparkleX - 1, sparkleY - sparkleSize * 2, 2, sparkleSize * 4)
+        end
+        
+        -- Add inner sparkles that move in the opposite direction
+        for i = 1, 6 do
+            local angle = (i / 6) * math.pi * 2 - time * 2 -- Counter-rotating
+            local sparkleRadius = 20 + 8 * math.sin(time * 6 + i)
+            local sparkleX = (width / 2) + math.cos(angle) * sparkleRadius
+            local sparkleY = (height / 2) + math.sin(angle) * sparkleRadius
+            local sparkleSize = 2 + math.sin(time * 8 + i) * 1
+            
+            love.graphics.setColor(1, 1, 1, intensity * 0.7)
+            love.graphics.circle("fill", sparkleX, sparkleY, sparkleSize)
+        end
+    end
 
     -- Apply dissolve effect if card is transforming
     local cardAlpha = 1.0
@@ -471,6 +527,674 @@ end
 -- =============================================================================
 -- Main UI Drawing Functions (Called from main.lua's love.draw)
 -- =============================================================================
+
+--- Draws a modern, minimal top bar with clean typography and subtle visual hierarchy.
+function Draw.drawModernTopBar(gameState, config, dependencies)
+    if not gameState or not gameState.currentRoundData then print("Draw.drawModernTopBar: Missing GameState or currentRoundData."); return end
+    if not config or not config.UI then print("Draw.drawModernTopBar: Missing Config.UI."); return end
+    if not dependencies or not dependencies.theme then print("Draw.drawModernTopBar: Missing dependencies.theme."); return end
+
+    local theme = dependencies.theme
+    local colors = theme.colors or {}
+    local fonts = theme.fonts or {}
+    local layout = theme.layout or {}
+    local uiCfg = config.UI
+    local gameCfg = config.Game or {}
+
+    -- Modern minimal dimensions
+    local screenW = config.Screen.width or 400
+    local screenH = config.Screen.height or 600
+    local topBarHeight = 60  -- Reduced height for minimalism
+    local topBarY = 8  -- Smaller top margin
+    local topBarX = 16  -- Clean 16px margin
+    local topBarWidth = screenW - 2 * topBarX
+    
+    -- Modern color palette - more subtle and refined
+    local bgColor = {0.98, 0.98, 0.99, 0.95}  -- Very light, almost white
+    local borderColor = {0.9, 0.9, 0.92, 0.3}  -- Subtle border
+    local primaryText = {0.15, 0.15, 0.17, 1}  -- Dark text for contrast
+    local secondaryText = {0.45, 0.45, 0.5, 1}  -- Medium gray for secondary info
+    local accentColor = {0.0, 0.48, 1.0, 1}  -- iOS system blue
+    local successColor = {0.2, 0.78, 0.35, 1}  -- Green for money
+    local warningColor = {1.0, 0.58, 0.0, 1}  -- Orange for warnings
+    local errorColor = {1.0, 0.23, 0.19, 1}  -- Red for critical
+    
+    -- Fonts
+    local titleFont = fonts.ui or fonts.default
+    local bodyFont = fonts.small or fonts.default
+    local captionFont = fonts.small or fonts.default  -- Even smaller for captions
+    
+    -- No background panel - completely minimal approach
+    -- Just draw content with proper spacing and typography
+    
+    -- Calculate responsive layout
+    local padding = 20
+    local itemSpacing = 32
+    local contentY = topBarY + 16
+    
+    -- Left section: Round and Goal (takes 60% of width)
+    local leftSectionWidth = topBarWidth * 0.6
+    local leftX = topBarX + padding
+    
+    -- Right section: Stats (takes 40% of width, right-aligned)
+    local rightSectionWidth = topBarWidth * 0.4
+    local rightX = topBarX + topBarWidth - rightSectionWidth - padding
+    
+    -- === LEFT SECTION: Round & Goal ===
+    if titleFont then
+        love.graphics.setFont(titleFont)
+        
+        -- Round number with modern typography
+        love.graphics.setColor(primaryText)
+        local roundText = "Round " .. tostring(gameState.currentRoundNumber or 0)
+        love.graphics.print(roundText, leftX, contentY)
+        
+        -- Goal description with better text hierarchy
+        if bodyFont then
+            love.graphics.setFont(bodyFont)
+            love.graphics.setColor(secondaryText)
+            local goalText = gameState.currentRoundData.description or "No goal set"
+            
+            -- Smart truncation with better logic
+            local maxWidth = leftSectionWidth - 40
+            if bodyFont:getWidth(goalText) > maxWidth then
+                -- Find a good breaking point
+                local words = {}
+                for word in goalText:gmatch("%S+") do
+                    table.insert(words, word)
+                end
+                
+                local truncated = ""
+                for i, word in ipairs(words) do
+                    local testText = truncated .. (i > 1 and " " or "") .. word
+                    if bodyFont:getWidth(testText .. "...") > maxWidth then
+                        break
+                    end
+                    truncated = testText
+                end
+                goalText = truncated .. "..."
+            end
+            
+            love.graphics.print(goalText, leftX, contentY + 20)
+        end
+    end
+    
+    -- === RIGHT SECTION: Stats Grid ===
+    local statsStartX = rightX
+    local statsY = contentY
+    
+    -- Create a clean 2x2 grid for stats
+    local statItemWidth = (rightSectionWidth - 16) / 2  -- 16px gap between columns
+    local statItemHeight = 20
+    
+    -- Money (top-left)
+    if bodyFont then
+        love.graphics.setFont(bodyFont)
+        love.graphics.setColor(successColor)
+        local moneyValue = "$" .. tostring(gameState.wallet or 0)
+        love.graphics.print(moneyValue, statsStartX, statsY)
+        
+        love.graphics.setColor(secondaryText)
+        love.graphics.print("Money", statsStartX, statsY + 12)
+    end
+    
+    -- Energy (top-right)
+    local energyValue = gameState.currentEnergy or 0
+    local maxEnergy = gameCfg.energyPerRound or 100
+    local energyRatio = math.max(0, math.min(1, energyValue / maxEnergy))
+    
+    -- Energy color based on level
+    local energyColor = accentColor
+    if energyRatio <= 0.25 then
+        energyColor = errorColor
+    elseif energyRatio <= 0.5 then
+        energyColor = warningColor
+    end
+    
+    if bodyFont then
+        love.graphics.setFont(bodyFont)
+        love.graphics.setColor(energyColor)
+        local energyText = tostring(energyValue) .. "/" .. tostring(maxEnergy)
+        local energyX = statsStartX + statItemWidth + 8
+        love.graphics.print(energyText, energyX, statsY)
+        
+        love.graphics.setColor(secondaryText)
+        love.graphics.print("Energy", energyX, statsY + 12)
+    end
+    
+    -- Progress (bottom, spans full width)
+    local currentPoints = gameState.scoreEarnedThisRound or 0
+    local targetPoints = gameState.currentRoundData.goalTarget or 100
+    local pointsRatio = math.max(0, math.min(1, currentPoints / targetPoints))
+    
+    local progressY = statsY + 32
+    if bodyFont then
+        love.graphics.setFont(bodyFont)
+        
+        -- Progress text
+        local progressColor = pointsRatio >= 1.0 and successColor or accentColor
+        love.graphics.setColor(progressColor)
+        local progressText = tostring(currentPoints) .. "/" .. tostring(targetPoints)
+        love.graphics.print(progressText, statsStartX, progressY)
+        
+        love.graphics.setColor(secondaryText)
+        love.graphics.print("Progress", statsStartX, progressY + 12)
+        
+        -- Minimal progress indicator (just a thin line)
+        local progressBarWidth = rightSectionWidth - 20
+        local progressBarHeight = 2  -- Very thin, minimal
+        local progressBarX = statsStartX
+        local progressBarY = progressY + 24
+        
+        -- Background line
+        love.graphics.setColor(0.9, 0.9, 0.92, 0.6)
+        love.graphics.rectangle("fill", progressBarX, progressBarY, progressBarWidth, progressBarHeight, 1, 1)
+        
+        -- Progress fill
+        if pointsRatio > 0 then
+            local fillWidth = progressBarWidth * pointsRatio
+            love.graphics.setColor(progressColor)
+            love.graphics.rectangle("fill", progressBarX, progressBarY, fillWidth, progressBarHeight, 1, 1)
+        end
+    end
+    
+    -- Completion indicator (subtle glow when goal is met)
+    if gameState.roundCompletionPending then
+        -- Very subtle success indicator
+        love.graphics.setColor(successColor[1], successColor[2], successColor[3], 0.1)
+        love.graphics.rectangle("fill", topBarX, topBarY, topBarWidth, topBarHeight + 8, 8, 8)
+        
+        -- Subtle pulsing border
+        local pulseIntensity = (math.sin(love.timer.getTime() * 3) + 1) * 0.5 * 0.15
+        love.graphics.setColor(successColor[1], successColor[2], successColor[3], pulseIntensity)
+        love.graphics.setLineWidth(1)
+        love.graphics.rectangle("line", topBarX - 1, topBarY - 1, topBarWidth + 2, topBarHeight + 10, 8, 8)
+    end
+    
+    -- Reset graphics state
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setLineWidth(1)
+end
+
+--- DESIGN OPTION 1: Card-based layout with integrated progress bars
+function Draw.drawTopBarOption1_Cards(gameState, config, dependencies)
+    if not gameState or not gameState.currentRoundData then return end
+    if not config or not config.UI then return end
+    if not dependencies or not dependencies.theme then return end
+
+    local theme = dependencies.theme
+    local colors = theme.colors or {}
+    local fonts = theme.fonts or {}
+    local gameCfg = config.Game or {}
+
+    local screenW = config.Screen.width or 400
+    local topBarY = 12
+    local cardHeight = 70
+    local cardSpacing = 12
+    local padding = 16
+    
+    -- Modern card colors
+    local cardBg = {1.0, 1.0, 1.0, 0.95}
+    local cardBorder = {0.85, 0.85, 0.88, 0.8}
+    local primaryText = {0.15, 0.15, 0.17, 1}
+    local secondaryText = {0.45, 0.45, 0.5, 1}
+    local accentColor = {0.0, 0.48, 1.0, 1}
+    local successColor = {0.2, 0.78, 0.35, 1}
+    local warningColor = {1.0, 0.58, 0.0, 1}
+    local errorColor = {1.0, 0.23, 0.19, 1}
+    
+    -- Calculate card layout (4 cards in a row)
+    local totalCards = 4
+    local availableWidth = screenW - 2 * padding
+    local cardWidth = (availableWidth - (totalCards - 1) * cardSpacing) / totalCards
+    
+    local cards = {
+        {title = "Round", value = tostring(gameState.currentRoundNumber or 0), color = accentColor},
+        {title = "Money", value = "$" .. tostring(gameState.wallet or 0), color = successColor},
+        {title = "Energy", value = tostring(gameState.currentEnergy or 0), color = accentColor, 
+         progress = math.max(0, math.min(1, (gameState.currentEnergy or 0) / (gameCfg.energyPerRound or 100)))},
+        {title = "Progress", value = tostring(gameState.scoreEarnedThisRound or 0), color = accentColor,
+         progress = math.max(0, math.min(1, (gameState.scoreEarnedThisRound or 0) / (gameState.currentRoundData.goalTarget or 100)))}
+    }
+    
+    -- Adjust energy color based on level
+    if cards[3].progress <= 0.25 then cards[3].color = errorColor
+    elseif cards[3].progress <= 0.5 then cards[3].color = warningColor end
+    
+    -- Draw cards
+    for i, card in ipairs(cards) do
+        local cardX = padding + (i - 1) * (cardWidth + cardSpacing)
+        
+        -- Card shadow
+        love.graphics.setColor(0, 0, 0, 0.08)
+        love.graphics.rectangle("fill", cardX + 2, topBarY + 2, cardWidth, cardHeight, 8, 8)
+        
+        -- Card background
+        love.graphics.setColor(cardBg)
+        love.graphics.rectangle("fill", cardX, topBarY, cardWidth, cardHeight, 8, 8)
+        love.graphics.setColor(cardBorder)
+        love.graphics.setLineWidth(1)
+        love.graphics.rectangle("line", cardX, topBarY, cardWidth, cardHeight, 8, 8)
+        
+        -- Card content
+        if fonts.ui then
+            love.graphics.setFont(fonts.ui)
+            love.graphics.setColor(card.color)
+            local valueW = fonts.ui:getWidth(card.value)
+            love.graphics.print(card.value, cardX + (cardWidth - valueW) / 2, topBarY + 12)
+        end
+        
+        if fonts.small then
+            love.graphics.setFont(fonts.small)
+            love.graphics.setColor(secondaryText)
+            local titleW = fonts.small:getWidth(card.title)
+            love.graphics.print(card.title, cardX + (cardWidth - titleW) / 2, topBarY + 32)
+        end
+        
+        -- Progress bar if present
+        if card.progress then
+            local barY = topBarY + cardHeight - 12
+            local barX = cardX + 8
+            local barW = cardWidth - 16
+            local barH = 4
+            
+            -- Background
+            love.graphics.setColor(0.9, 0.9, 0.92, 0.6)
+            love.graphics.rectangle("fill", barX, barY, barW, barH, 2, 2)
+            
+            -- Fill
+            if card.progress > 0 then
+                love.graphics.setColor(card.color)
+                love.graphics.rectangle("fill", barX, barY, barW * card.progress, barH, 2, 2)
+            end
+        end
+    end
+    
+    -- Goal description below cards
+    if fonts.small then
+        love.graphics.setFont(fonts.small)
+        love.graphics.setColor(secondaryText)
+        local goalText = gameState.currentRoundData.description or "No goal set"
+        local goalY = topBarY + cardHeight + 8
+        love.graphics.printf(goalText, padding, goalY, screenW - 2 * padding, "center")
+    end
+    
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+--- DESIGN OPTION 2: Compact horizontal layout with mini progress bars
+function Draw.drawTopBarOption2_Compact(gameState, config, dependencies)
+    if not gameState or not gameState.currentRoundData then return end
+    if not config or not config.UI then return end
+    if not dependencies or not dependencies.theme then return end
+
+    local theme = dependencies.theme
+    local fonts = theme.fonts or {}
+    local gameCfg = config.Game or {}
+
+    local screenW = config.Screen.width or 400
+    local topBarHeight = 50
+    local topBarY = 8
+    local padding = 16
+    
+    -- Colors
+    local bgColor = {0.98, 0.98, 0.99, 0.95}
+    local primaryText = {0.15, 0.15, 0.17, 1}
+    local secondaryText = {0.45, 0.45, 0.5, 1}
+    local accentColor = {0.0, 0.48, 1.0, 1}
+    local successColor = {0.2, 0.78, 0.35, 1}
+    local warningColor = {1.0, 0.58, 0.0, 1}
+    local errorColor = {1.0, 0.23, 0.19, 1}
+    
+    -- Background
+    love.graphics.setColor(bgColor)
+    love.graphics.rectangle("fill", padding, topBarY, screenW - 2 * padding, topBarHeight, 8, 8)
+    
+    -- Content layout
+    local contentY = topBarY + 8
+    local itemSpacing = 24
+    local currentX = padding + 12
+    
+    -- Round info
+    if fonts.ui then
+        love.graphics.setFont(fonts.ui)
+        love.graphics.setColor(primaryText)
+        local roundText = "Round " .. tostring(gameState.currentRoundNumber or 0)
+        love.graphics.print(roundText, currentX, contentY)
+        currentX = currentX + fonts.ui:getWidth(roundText) + itemSpacing
+    end
+    
+    -- Money with icon
+    if fonts.small then
+        love.graphics.setFont(fonts.small)
+        love.graphics.setColor(successColor)
+        local moneyText = "$" .. tostring(gameState.wallet or 0)
+        love.graphics.print(moneyText, currentX, contentY + 2)
+        currentX = currentX + fonts.small:getWidth(moneyText) + itemSpacing
+    end
+    
+    -- Energy with mini progress bar
+    local energyValue = gameState.currentEnergy or 0
+    local maxEnergy = gameCfg.energyPerRound or 100
+    local energyRatio = math.max(0, math.min(1, energyValue / maxEnergy))
+    local energyColor = accentColor
+    if energyRatio <= 0.25 then energyColor = errorColor
+    elseif energyRatio <= 0.5 then energyColor = warningColor end
+    
+    if fonts.small then
+        love.graphics.setFont(fonts.small)
+        love.graphics.setColor(energyColor)
+        local energyText = "⚡" .. tostring(energyValue)
+        love.graphics.print(energyText, currentX, contentY + 2)
+        
+        -- Mini progress bar
+        local barX = currentX
+        local barY = contentY + 18
+        local barW = 40
+        local barH = 3
+        
+        love.graphics.setColor(0.9, 0.9, 0.92, 0.6)
+        love.graphics.rectangle("fill", barX, barY, barW, barH, 1, 1)
+        
+        if energyRatio > 0 then
+            love.graphics.setColor(energyColor)
+            love.graphics.rectangle("fill", barX, barY, barW * energyRatio, barH, 1, 1)
+        end
+        
+        currentX = currentX + math.max(fonts.small:getWidth(energyText), barW) + itemSpacing
+    end
+    
+    -- Progress with mini progress bar
+    local currentPoints = gameState.scoreEarnedThisRound or 0
+    local targetPoints = gameState.currentRoundData.goalTarget or 100
+    local pointsRatio = math.max(0, math.min(1, currentPoints / targetPoints))
+    local progressColor = pointsRatio >= 1.0 and successColor or accentColor
+    
+    if fonts.small then
+        love.graphics.setFont(fonts.small)
+        love.graphics.setColor(progressColor)
+        local progressText = "🎯" .. tostring(currentPoints) .. "/" .. tostring(targetPoints)
+        love.graphics.print(progressText, currentX, contentY + 2)
+        
+        -- Mini progress bar
+        local barX = currentX
+        local barY = contentY + 18
+        local barW = 50
+        local barH = 3
+        
+        love.graphics.setColor(0.9, 0.9, 0.92, 0.6)
+        love.graphics.rectangle("fill", barX, barY, barW, barH, 1, 1)
+        
+        if pointsRatio > 0 then
+            love.graphics.setColor(progressColor)
+            love.graphics.rectangle("fill", barX, barY, barW * pointsRatio, barH, 1, 1)
+        end
+    end
+    
+    -- Goal description (right-aligned)
+    if fonts.small then
+        love.graphics.setFont(fonts.small)
+        love.graphics.setColor(secondaryText)
+        local goalText = gameState.currentRoundData.description or "No goal set"
+        local maxGoalWidth = 150
+        if fonts.small:getWidth(goalText) > maxGoalWidth then
+            goalText = string.sub(goalText, 1, 20) .. "..."
+        end
+        local goalX = screenW - padding - 12 - fonts.small:getWidth(goalText)
+        love.graphics.print(goalText, goalX, contentY + 2)
+    end
+    
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+--- DESIGN OPTION 3: Dashboard-style with prominent progress indicators
+function Draw.drawTopBarOption3_Dashboard(gameState, config, dependencies)
+    if not gameState or not gameState.currentRoundData then return end
+    if not config or not config.UI then return end
+    if not dependencies or not dependencies.theme then return end
+
+    local theme = dependencies.theme
+    local fonts = theme.fonts or {}
+    local gameCfg = config.Game or {}
+
+    local screenW = config.Screen.width or 400
+    local topBarHeight = 85
+    local topBarY = 8
+    local padding = 16
+    
+    -- Colors
+    local bgColor = {0.95, 0.95, 0.97, 0.95}
+    local primaryText = {0.15, 0.15, 0.17, 1}
+    local secondaryText = {0.45, 0.45, 0.5, 1}
+    local accentColor = {0.0, 0.48, 1.0, 1}
+    local successColor = {0.2, 0.78, 0.35, 1}
+    local warningColor = {1.0, 0.58, 0.0, 1}
+    local errorColor = {1.0, 0.23, 0.19, 1}
+    
+    -- Background panel
+    love.graphics.setColor(0, 0, 0, 0.05)
+    love.graphics.rectangle("fill", padding + 2, topBarY + 2, screenW - 2 * padding, topBarHeight, 12, 12)
+    love.graphics.setColor(bgColor)
+    love.graphics.rectangle("fill", padding, topBarY, screenW - 2 * padding, topBarHeight, 12, 12)
+    love.graphics.setColor(0.85, 0.85, 0.88, 0.8)
+    love.graphics.setLineWidth(1)
+    love.graphics.rectangle("line", padding, topBarY, screenW - 2 * padding, topBarHeight, 12, 12)
+    
+    -- Header section
+    local headerY = topBarY + 12
+    if fonts.ui then
+        love.graphics.setFont(fonts.ui)
+        love.graphics.setColor(primaryText)
+        local roundText = "Round " .. tostring(gameState.currentRoundNumber or 0)
+        love.graphics.print(roundText, padding + 16, headerY)
+        
+        -- Money (right-aligned in header)
+        love.graphics.setColor(successColor)
+        local moneyText = "$" .. tostring(gameState.wallet or 0)
+        local moneyX = screenW - padding - 16 - fonts.ui:getWidth(moneyText)
+        love.graphics.print(moneyText, moneyX, headerY)
+    end
+    
+    -- Goal description
+    if fonts.small then
+        love.graphics.setFont(fonts.small)
+        love.graphics.setColor(secondaryText)
+        local goalText = gameState.currentRoundData.description or "No goal set"
+        love.graphics.print(goalText, padding + 16, headerY + 20)
+    end
+    
+    -- Progress bars section
+    local barsY = topBarY + 50
+    local barHeight = 8
+    local barSpacing = 20
+    
+    -- Energy bar
+    local energyValue = gameState.currentEnergy or 0
+    local maxEnergy = gameCfg.energyPerRound or 100
+    local energyRatio = math.max(0, math.min(1, energyValue / maxEnergy))
+    local energyColor = accentColor
+    if energyRatio <= 0.25 then energyColor = errorColor
+    elseif energyRatio <= 0.5 then energyColor = warningColor end
+    
+    local energyBarWidth = (screenW - 2 * padding - 32 - barSpacing) / 2
+    local energyBarX = padding + 16
+    
+    -- Energy label and value
+    if fonts.small then
+        love.graphics.setFont(fonts.small)
+        love.graphics.setColor(secondaryText)
+        love.graphics.print("Energy", energyBarX, barsY - 15)
+        love.graphics.setColor(energyColor)
+        local energyText = tostring(energyValue) .. "/" .. tostring(maxEnergy)
+        love.graphics.print(energyText, energyBarX + energyBarWidth - fonts.small:getWidth(energyText), barsY - 15)
+    end
+    
+    -- Energy bar
+    love.graphics.setColor(0.9, 0.9, 0.92, 0.8)
+    love.graphics.rectangle("fill", energyBarX, barsY, energyBarWidth, barHeight, 4, 4)
+    
+    if energyRatio > 0 then
+        love.graphics.setColor(energyColor)
+        love.graphics.rectangle("fill", energyBarX, barsY, energyBarWidth * energyRatio, barHeight, 4, 4)
+        
+        -- Highlight
+        love.graphics.setColor(energyColor[1] + 0.2, energyColor[2] + 0.2, energyColor[3] + 0.2, 0.6)
+        love.graphics.rectangle("fill", energyBarX, barsY, energyBarWidth * energyRatio, barHeight / 2, 4, 4)
+    end
+    
+    -- Progress bar
+    local currentPoints = gameState.scoreEarnedThisRound or 0
+    local targetPoints = gameState.currentRoundData.goalTarget or 100
+    local pointsRatio = math.max(0, math.min(1, currentPoints / targetPoints))
+    local progressColor = pointsRatio >= 1.0 and successColor or accentColor
+    
+    local progressBarX = energyBarX + energyBarWidth + barSpacing
+    local progressBarWidth = energyBarWidth
+    
+    -- Progress label and value
+    if fonts.small then
+        love.graphics.setFont(fonts.small)
+        love.graphics.setColor(secondaryText)
+        love.graphics.print("Progress", progressBarX, barsY - 15)
+        love.graphics.setColor(progressColor)
+        local progressText = tostring(currentPoints) .. "/" .. tostring(targetPoints)
+        love.graphics.print(progressText, progressBarX + progressBarWidth - fonts.small:getWidth(progressText), barsY - 15)
+    end
+    
+    -- Progress bar
+    love.graphics.setColor(0.9, 0.9, 0.92, 0.8)
+    love.graphics.rectangle("fill", progressBarX, barsY, progressBarWidth, barHeight, 4, 4)
+    
+    if pointsRatio > 0 then
+        love.graphics.setColor(progressColor)
+        love.graphics.rectangle("fill", progressBarX, barsY, progressBarWidth * pointsRatio, barHeight, 4, 4)
+        
+        -- Highlight
+        love.graphics.setColor(progressColor[1] + 0.2, progressColor[2] + 0.2, progressColor[3] + 0.2, 0.6)
+        love.graphics.rectangle("fill", progressBarX, barsY, progressBarWidth * pointsRatio, barHeight / 2, 4, 4)
+    end
+    
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+--- DESIGN OPTION 4: Adaptive hybrid - shows progress bars when needed
+function Draw.drawTopBarOption4_Adaptive(gameState, config, dependencies)
+    if not gameState or not gameState.currentRoundData then return end
+    if not config or not config.UI then return end
+    if not dependencies or not dependencies.theme then return end
+
+    local theme = dependencies.theme
+    local fonts = theme.fonts or {}
+    local gameCfg = config.Game or {}
+
+    local screenW = config.Screen.width or 400
+    local baseHeight = 45
+    local expandedHeight = 75
+    local topBarY = 8
+    local padding = 16
+    
+    -- Determine if we should show expanded view (when energy is low or goal is close)
+    local energyRatio = math.max(0, math.min(1, (gameState.currentEnergy or 0) / (gameCfg.energyPerRound or 100)))
+    local pointsRatio = math.max(0, math.min(1, (gameState.scoreEarnedThisRound or 0) / (gameState.currentRoundData.goalTarget or 100)))
+    local showExpanded = energyRatio <= 0.5 or pointsRatio >= 0.7
+    
+    local topBarHeight = showExpanded and expandedHeight or baseHeight
+    
+    -- Colors
+    local primaryText = {0.15, 0.15, 0.17, 1}
+    local secondaryText = {0.45, 0.45, 0.5, 1}
+    local accentColor = {0.0, 0.48, 1.0, 1}
+    local successColor = {0.2, 0.78, 0.35, 1}
+    local warningColor = {1.0, 0.58, 0.0, 1}
+    local errorColor = {1.0, 0.23, 0.19, 1}
+    
+    -- Base layout - always visible
+    local contentY = topBarY + 12
+    
+    -- Left: Round and goal
+    if fonts.ui then
+        love.graphics.setFont(fonts.ui)
+        love.graphics.setColor(primaryText)
+        local roundText = "Round " .. tostring(gameState.currentRoundNumber or 0)
+        love.graphics.print(roundText, padding, contentY)
+    end
+    
+    if fonts.small then
+        love.graphics.setFont(fonts.small)
+        love.graphics.setColor(secondaryText)
+        local goalText = gameState.currentRoundData.description or "No goal set"
+        if fonts.small:getWidth(goalText) > 200 then
+            goalText = string.sub(goalText, 1, 25) .. "..."
+        end
+        love.graphics.print(goalText, padding, contentY + 18)
+    end
+    
+    -- Right: Key stats
+    local rightX = screenW - padding - 120
+    
+    -- Money
+    if fonts.small then
+        love.graphics.setFont(fonts.small)
+        love.graphics.setColor(successColor)
+        local moneyText = "$" .. tostring(gameState.wallet or 0)
+        love.graphics.print(moneyText, rightX, contentY)
+    end
+    
+    -- Energy with color coding
+    local energyValue = gameState.currentEnergy or 0
+    local energyColor = accentColor
+    if energyRatio <= 0.25 then energyColor = errorColor
+    elseif energyRatio <= 0.5 then energyColor = warningColor end
+    
+    if fonts.small then
+        love.graphics.setColor(energyColor)
+        local energyText = "⚡" .. tostring(energyValue)
+        love.graphics.print(energyText, rightX + 60, contentY)
+    end
+    
+    -- Progress indicator
+    local currentPoints = gameState.scoreEarnedThisRound or 0
+    local targetPoints = gameState.currentRoundData.goalTarget or 100
+    local progressColor = pointsRatio >= 1.0 and successColor or accentColor
+    
+    if fonts.small then
+        love.graphics.setColor(progressColor)
+        local progressText = tostring(currentPoints) .. "/" .. tostring(targetPoints)
+        love.graphics.print(progressText, rightX, contentY + 18)
+    end
+    
+    -- Expanded section - only when needed
+    if showExpanded then
+        local barsY = contentY + 40
+        local barHeight = 6
+        local barWidth = 80
+        
+        -- Energy bar
+        love.graphics.setColor(0.9, 0.9, 0.92, 0.6)
+        love.graphics.rectangle("fill", rightX + 60, barsY, barWidth, barHeight, 3, 3)
+        
+        if energyRatio > 0 then
+            love.graphics.setColor(energyColor)
+            love.graphics.rectangle("fill", rightX + 60, barsY, barWidth * energyRatio, barHeight, 3, 3)
+        end
+        
+        -- Progress bar
+        love.graphics.setColor(0.9, 0.9, 0.92, 0.6)
+        love.graphics.rectangle("fill", rightX, barsY + 12, barWidth + 60, barHeight, 3, 3)
+        
+        if pointsRatio > 0 then
+            love.graphics.setColor(progressColor)
+            love.graphics.rectangle("fill", rightX, barsY + 12, (barWidth + 60) * pointsRatio, barHeight, 3, 3)
+        end
+    end
+    
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+--- Current active top bar function - CHANGE THIS TO SWITCH DESIGNS
+function Draw.drawModernTopBar(gameState, config, dependencies)
+     Draw.drawTopBarOption1_Cards(gameState, config, dependencies)      -- Card-based layout
+end
 
 --- Draws the current round goal and progress with improved formatting.
 function Draw.drawGoalDisplay(gameState, config, dependencies)
@@ -925,11 +1649,12 @@ function Draw.drawPotentialPotionDisplay(gameState, config, dependencies)
     local panelX = potPotCfg.x or ((config.Screen.width - (potPotCfg.width or 300)) / 2)
     local panelY = potPotCfg.y or 200 -- Fallback Y
     local panelW = potPotCfg.width or 300
-    local panelH = potPotCfg.height or 55
+    local panelH = potPotCfg.height or 75 -- Increased height to accommodate energy cost
     local padding = potPotCfg.padding or 5
     
     local bgColor = colors.panelBackground or {0.2,0.2,0.25,0.9}
     local textColor = colors.textLight or {0.9,0.9,0.9,1}
+    local energyColor = colors.textEnergy or colors.textScore or {0.8,0.7,0.1,1} -- Use energy color or fallback to score color
     local potionNameFont = fonts.ui or fonts.default
     local scoreFont = fonts.small or fonts.default
 
@@ -951,6 +1676,39 @@ function Draw.drawPotentialPotionDisplay(gameState, config, dependencies)
             local scoreText = "Value: " .. tostring(gameState.currentScore or 0)
             local scoreY = nameY + (potionNameFont and potionNameFont:getHeight() or 16) + 2 -- Below name
             love.graphics.printf(scoreText, panelX + padding, scoreY, panelW - 2 * padding, "center")
+            
+            -- Draw Energy Cost (if a valid potion can be made)
+            local potionResult = gameState.potentialPotionResult
+            if potionResult and potionResult.name and potionResult.name ~= "Nothing" and potionResult.name ~= "None" and potionResult.name ~= "Unknown Mixture" then
+                -- Calculate variable energy cost based on number of selected cards
+                local numSelectedCards = #gameState.selectedCardIndices
+                local makePotionCost
+                
+                -- Use new variable cost calculation if available, fallback to old system
+                if dependencies and dependencies.coreGame and dependencies.coreGame.calculatePotionEnergyCost then
+                    makePotionCost = dependencies.coreGame.calculatePotionEnergyCost(numSelectedCards, config)
+                else
+                    -- Fallback calculation
+                    local baseCost = (config.Game and config.Game.makePotionBaseCost) or 10
+                    local costPerCard = (config.Game and config.Game.makePotionCostPerCard) or 3
+                    local cardCount = math.max(2, numSelectedCards)
+                    makePotionCost = baseCost + (cardCount - 2) * costPerCard
+                end
+                
+                local currentEnergy = gameState.currentEnergy or 0
+                
+                -- Set color based on whether player can afford it
+                if currentEnergy >= makePotionCost then
+                    love.graphics.setColor(energyColor)
+                else
+                    love.graphics.setColor(colors.textError or {0.9, 0.3, 0.3, 1}) -- Red if can't afford
+                end
+                
+                -- Show both the cost and number of cards for clarity
+                local energyText = string.format("Energy Cost: %d (%d cards)", makePotionCost, numSelectedCards)
+                local energyY = scoreY + (scoreFont and scoreFont:getHeight() or 12) + 2 -- Below score
+                love.graphics.printf(energyText, panelX + padding, energyY, panelW - 2 * padding, "center")
+            end
         end
     end
 end

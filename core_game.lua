@@ -844,6 +844,23 @@ function CoreGame.drawReplacements(gameState, config, dependencies, numToDraw)
     end
 end
 
+function CoreGame.calculatePotionEnergyCost(numCards, config)
+    if not config or not config.Game then
+        -- Fallback to old system if config is missing
+        return (config and config.Game and config.Game.makePotionEnergyCost) or 15
+    end
+    
+    local gameConfig = config.Game
+    local baseCost = gameConfig.makePotionBaseCost or 10
+    local costPerCard = gameConfig.makePotionCostPerCard or 3
+    
+    -- Minimum 2 cards for a potion
+    local cardCount = math.max(2, numCards or 2)
+    
+    -- Base cost for 2 cards + additional cost for each extra card
+    return baseCost + (cardCount - 2) * costPerCard
+end
+
 function CoreGame.recalculateCurrentScore(gameState)
     if not (gameState and gameState.selectedCardIndices and gameState.hand) then
         if gameState then gameState.currentScore = 0 end
@@ -1023,7 +1040,10 @@ function CoreGame.tryMakePotion(gameState, config, dependencies)
         return
     end
 
-    local makePotionCost = (config.Game and config.Game.makePotionEnergyCost) or 15
+    -- Calculate variable energy cost based on number of selected cards
+    local numSelectedCards = #gameState.selectedCardIndices
+    local makePotionCost = CoreGame.calculatePotionEnergyCost(numSelectedCards, config)
+    
     if gameState.currentEnergy < makePotionCost then
         print(string.format("Not enough energy for potion. Need %d, Have %d", makePotionCost, gameState.currentEnergy))
         return
@@ -1695,6 +1715,8 @@ function CoreGame.applySpellEffect(gameState, dependencies, spellId, targetData)
     end
     
     gameState.selectedSpellId, gameState.selectingSpellTarget = nil, false
+    gameState.spellCastingMode = false
+    gameState.selectedCardIndices = {}
     
     local goalMet = CoreGame.checkRoundGoalCompletion(gameState)
     if gameState.currentEnergy <= 0 and not goalMet then

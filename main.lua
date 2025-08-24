@@ -200,6 +200,20 @@ function updateCardAnimations(dt)
                 end
             end
         end
+        
+        -- Update spell sparkle effects
+        if card.spellSparkleEffect then
+            card.spellSparkleEffect.timer = card.spellSparkleEffect.timer + dt
+            
+            -- Calculate sparkle intensity (fade out over time)
+            local progress = card.spellSparkleEffect.timer / card.spellSparkleEffect.duration
+            card.spellSparkleEffect.intensity = math.max(0, 1 - progress)
+            
+            -- Remove effect when finished
+            if progress >= 1 then
+                card.spellSparkleEffect = nil
+            end
+        end
     end
 
     if #indicesOfCardsToRemove > 0 then
@@ -245,12 +259,12 @@ function updateCardAnimations(dt)
                 
                 if numReplacements > 0 then
                     print("DEBUG: Drawing replacement cards to reach target hand size")
-                    if drawCardsFromCore then
-                        -- Draw enough cards to reach target hand size (7), not just the number discarded
-                        drawCardsFromCore(GameState, Config, Dependencies)
+                    if Dependencies.coreGame and Dependencies.coreGame.drawReplacements then
+                        -- Use drawReplacements which automatically calculates how many cards are needed
+                        Dependencies.coreGame.drawReplacements(GameState, Config, Dependencies)
                         print("DEBUG: Replacement cards drawn. New hand size:", #GameState.hand)
                     else
-                        print("Error (updateCardAnimations): CoreGame.drawCards missing from Dependencies! Cannot draw replacements.")
+                        print("Error (updateCardAnimations): CoreGame.drawReplacements missing from Dependencies! Cannot draw replacements.")
                     end
                 end
             end
@@ -545,10 +559,28 @@ function love.load()
             if spellData.target and spellData.target ~= "none" then
                 if targetData and targetData.handIndex then
                     -- Direct target provided (from card selection), apply spell immediately
+                    
+                    -- Add sparkle effect to the targeted card before casting
+                    if GameState.hand and GameState.hand[targetData.handIndex] then
+                        local targetCard = GameState.hand[targetData.handIndex]
+                        targetCard.spellSparkleEffect = {
+                            duration = 3.0, -- 3 second sparkle effect (increased for more prominence)
+                            timer = 0,
+                            intensity = 1.0
+                        }
+                        -- Deselect the card visually (remove highlight and move back to row)
+                        targetCard.isHighlighted = false
+                    end
+                    
                     CoreGame.applySpellEffect(GameState, Dependencies, spellId, targetData)
                     GameState.spellCastingMode = false
                     GameState.selectedSpellId = nil
                     GameState.selectedCardIndices = {}
+                    
+                    -- Recalculate hand layout to move cards back to normal positions
+                    if Dependencies.sort and Dependencies.sort.calculateHandLayout then
+                        Dependencies.sort.calculateHandLayout(GameState, Dependencies.config)
+                    end
                 else
                     -- Fall back to old targeting system for non-hand_card targets
                     GameState.selectedSpellId = spellId
@@ -707,8 +739,9 @@ function love.load()
     UIState.Regions.InfoArea={x=0,y=currentY,width=sW,height=(uiLineH*2)+spacingM}; currentY=UIState.Regions.InfoArea.y+UIState.Regions.InfoArea.height+spacingM
     local pAreaCfg=Config.UI.potionDisplayArea or {}; local pAreaW=sW*0.8; local pAreaX=(sW-pAreaW)/2
     UIState.Regions.PotionArea={x=pAreaX,y=currentY,width=pAreaW,height=pAreaCfg.height or 140}; currentY=UIState.Regions.PotionArea.y+UIState.Regions.PotionArea.height+spacingM
-    local potPCfg=Config.UI.potentialPotionDisplay or {}; local potPW=potPCfg.width or 300; local potPH=potPCfg.height or 60; local potPX=(sW-potPW)/2
-    UIState.Regions.PotentialPotionArea={x=potPX,y=currentY,width=potPW,height=potPH}; currentY=UIState.Regions.PotentialPotionArea.y+UIState.Regions.PotentialPotionArea.height+spacingM
+    local potPCfg=Config.UI.potentialPotionDisplay or {}; local potPW=potPCfg.width or 300; local potPH=potPCfg.height or 75; local potPX=(sW-potPW)/2
+    -- Move potential potion display higher up with extra spacing from hand area
+    UIState.Regions.PotentialPotionArea={x=potPX,y=currentY,width=potPW,height=potPH}; currentY=UIState.Regions.PotentialPotionArea.y+UIState.Regions.PotentialPotionArea.height+spacingM*2
     local btmBtnH=(Config.UI.discardButton.height or 48); local btmBtnPY=(Config.UI.discardButton.padding or spacingM)
     UIState.Regions.BottomBar={x=0,y=sH-btmBtnH-btmBtnPY,width=sW,height=btmBtnH}
     Config.Layout.handBaseY=currentY; UIState.Regions.HandArea={x=0,y=Config.Layout.handBaseY-(Config.Layout.handArcDepth or 0),width=sW,height=(UIState.Regions.BottomBar.y-spacingM)-(Config.Layout.handBaseY-(Config.Layout.handArcDepth or 0))}
@@ -1131,14 +1164,11 @@ function love.draw()
     local bgColor = Config.UI.Colors.background or {0.1,0.1,0.1} 
     love.graphics.clear(bgColor[1], bgColor[2], bgColor[3], bgColor[4] or 1)
 
-    drawAPI.drawGoalDisplay(GameState, Config, Dependencies)
-    drawAPI.drawMoneyDisplay(GameState, Config, Dependencies) -- Draw money
-    drawAPI.drawEnergyDisplay(GameState, Config, Dependencies) -- Draw energy
-    drawAPI.drawEnergyProgressBar(GameState, Config, Dependencies) -- Draw energy progress bar
+    drawAPI.drawModernTopBar(GameState, Config, Dependencies) -- Draw modern top bar
     drawAPI.drawEnergyElixirDisplay(GameState, Config, Dependencies) -- Draw energy elixir count
-    drawAPI.drawPotionDisplay(GameState, Config, Dependencies)
+    -- drawAPI.drawPotionDisplay(GameState, Config, Dependencies) -- Removed potion drawing
     drawAPI.drawPotentialPotionDisplay(GameState, Config, Dependencies)
-    drawAPI.drawDeckAndDiscardPiles(GameState, Config, Dependencies)
+    -- drawAPI.drawDeckAndDiscardPiles(GameState, Config, Dependencies) -- Removed deck/discard pile cards
     drawAPI.drawHand(GameState, Config, Dependencies)
     
     -- Draw spell casting mode UI if active

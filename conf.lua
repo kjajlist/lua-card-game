@@ -141,7 +141,9 @@ Config = {
             textDescription = {0.0, 0.0, 0.0, 0.6}, -- Updated secondary text
             textScore = {0.35, 0.34, 0.84, 1.0},   -- Purple for scores
             textEnergy = {0.0, 0.48, 1.0, 1.0},    -- Primary blue for energy
+            textError = {0.9, 0.3, 0.3, 1.0},      -- Red for errors/warnings
             textMoney = {1.0, 0.58, 0.0, 1.0},     -- Orange for money
+            textPoints = {1.0, 0.8, 0.4, 1.0},     -- Gold for points
             highlight = {0.0, 0.48, 1.0, 0.15},   -- Subtle blue highlight
 
             -- Modern Button System
@@ -245,7 +247,7 @@ Config = {
         bottleWidth = 60,
         bottleHeight = 90,
         goalDisplay = { height = 65, padding = 8, roundTextYOffset = 0, goalTextYOffset = 18, progressTextYOffset = 38 }, -- (x,y,width calculated)
-        potentialPotionDisplay = { width = 300, height = 55, padding = 5 }, -- (x,y calculated)
+        potentialPotionDisplay = { width = 300, height = 75, padding = 5 }, -- (x,y calculated)
         -- CountInfoY, ScoreInfoY for deck/discard text positions calculated in love.load
 
         -- Overlay Settings (General positioning and sizing ratios for panel calculation)
@@ -313,13 +315,16 @@ Config = {
             ["elegant_bottle"]= { neckH=0.3,  bodyH=0.7,  bodyW=0.65, neckBottomYRel = -0.35,liquidTopYRel = -0.3, liquidBottomYRel = 0.4, spawnWidthRatio = 0.6 },
             ["mystical_vial"] = { neckH=0.15, bodyH=0.85, bodyW=0.55, neckBottomYRel = -0.4, liquidTopYRel = -0.35,liquidBottomYRel = 0.5, spawnWidthRatio = 0.5 },
             ["herbal_jar"]    = { neckH=0.1,  bodyH=0.9,  bodyW=0.85, neckBottomYRel = -0.45,liquidTopYRel = -0.4, liquidBottomYRel = 0.5, spawnWidthRatio = 0.8 },
+            ["heart"]         = { neckH=0.25, bodyH=0.75, bodyW=0.7,  neckBottomYRel = -0.35,liquidTopYRel = -0.3, liquidBottomYRel = 0.45, spawnWidthRatio = 0.65 },
         }
     },
     Game = {
         initialHandSize = 7,
         maxHandSize = 10,
         energyPerRound = 100,         -- Total energy for the day (doesn't replenish between rounds)
-        makePotionEnergyCost = 15,    -- Energy cost to attempt making a potion
+        makePotionEnergyCost = 15,    -- Base energy cost to attempt making a potion (deprecated - use variable cost)
+        makePotionBaseCost = 10,      -- Base energy cost for 2-card potions
+        makePotionCostPerCard = 3,    -- Additional energy cost per card beyond 2
         shopRefreshCost = 5,          -- Cost to refresh the shop
         -- Spell energy costs are defined per spell in core_game.lua's SpellDefinitions
     },

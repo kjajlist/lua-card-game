@@ -85,7 +85,20 @@ function Handlers.isButtonEnabled(buttonName, gameState, dependencies)
                       #gameState.selectedCardIndices > 0
 
     elseif buttonName == "makePotion" then
-        local makePotionEnergyCost = (gameConfig and gameConfig.makePotionEnergyCost) or 15 -- Fallback
+        -- Calculate variable energy cost based on selected cards
+        local numSelectedCards = (gameState.selectedCardIndices and #gameState.selectedCardIndices) or 0
+        local makePotionEnergyCost
+        
+        if dependencies and dependencies.coreGame and dependencies.coreGame.calculatePotionEnergyCost then
+            makePotionEnergyCost = dependencies.coreGame.calculatePotionEnergyCost(numSelectedCards, config)
+        else
+            -- Fallback calculation
+            local baseCost = (gameConfig and gameConfig.makePotionBaseCost) or 10
+            local costPerCard = (gameConfig and gameConfig.makePotionCostPerCard) or 3
+            local cardCount = math.max(2, numSelectedCards)
+            makePotionEnergyCost = baseCost + (cardCount - 2) * costPerCard
+        end
+        
         isEnabled = canPerformGeneralActions and
                       gameState.selectedCardIndices and
                       #gameState.selectedCardIndices > 0 and
@@ -204,10 +217,29 @@ function Handlers.handleMouseClick(x, y, gameState, config, dependencies)
                     if gameState.selectedCardIndices and #gameState.selectedCardIndices > 0 then
                         local selectedCardIndex = gameState.selectedCardIndices[1]
                         print(string.format("        -> Casting spell '%s' on card at index %d", spellDefinition.name, selectedCardIndex))
+                        
+                        -- Add sparkle effect to the targeted card before casting
+                        if gameState.hand and gameState.hand[selectedCardIndex] then
+                            local targetCard = gameState.hand[selectedCardIndex]
+                            targetCard.spellSparkleEffect = {
+                                duration = 3.0, -- 3 second sparkle effect (increased for more prominence)
+                                timer = 0,
+                                intensity = 1.0
+                            }
+                            -- Deselect the card visually (remove highlight and move back to row)
+                            targetCard.isHighlighted = false
+                        end
+                        
                         applySpellEffectFunc(gameState, dependencies, gameState.selectedSpellId, {handIndex = selectedCardIndex})
                         gameState.spellCastingMode = false
                         gameState.selectedSpellId = nil
                         gameState.selectedCardIndices = {}
+                        
+                        -- Recalculate hand layout to move cards back to normal positions
+                        if dependencies.sort and dependencies.sort.calculateHandLayout then
+                            dependencies.sort.calculateHandLayout(gameState, dependencies.config)
+                        end
+                        
                         clickWasHandled = true
                     end
                 else
