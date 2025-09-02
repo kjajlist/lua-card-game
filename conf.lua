@@ -221,6 +221,26 @@ Config = {
             progressBarBackground = {0.1, 0.1, 0.15, 0.8},  -- Background color for progress bars
             progressBarFill = {0.3, 0.7, 1.0, 1.0},         -- Fill color for energy progress bar (blue)
             progressBarBorder = {0.3, 0.3, 0.4, 0.8},       -- Border color for progress bars
+            
+            -- Scroll Bar Colors (enhanced for touch)
+            scrollBarBackground = {0.8, 0.8, 0.8, 0.9},     -- Scroll bar background
+            scrollBarThumb = {0.6, 0.6, 0.6, 1.0},          -- Scroll bar thumb
+            scrollBarBorder = {0.4, 0.4, 0.4, 1.0},         -- Scroll bar border
+        },
+
+        -- Scrolling Configuration
+        Scrolling = {
+            enabled = true,                    -- Enable/disable scrolling features
+            touchEnabled = true,               -- Enable touch scrolling
+            mouseWheelEnabled = true,          -- Enable mouse wheel scrolling
+            momentumEnabled = true,            -- Enable momentum scrolling
+            scrollSpeed = 30,                  -- Base scroll speed for mouse wheel
+            momentumDeceleration = 0.85,       -- How quickly momentum decreases
+            momentumFriction = 0.92,           -- Friction when dragging
+            scrollBarWidth = 12,               -- Width of scroll bars (touch-friendly)
+            scrollBarMinHeight = 30,           -- Minimum height of scroll bar thumb
+            scrollBarCornerRadius = 6,         -- Corner radius for scroll bars
+            touchTargetSize = 44,              -- Minimum touch target size for scroll bars
         },
 
         -- Modern Corner Radius System (iOS-style)
@@ -384,7 +404,7 @@ GameState = {
     drag = { isDragging = false, cardIndex = nil, offsetX = 0, offsetY = 0 }, -- State for card dragging
     activeOverlay = nil,            -- Name (string key) of the currently visible overlay, or nil
     currentShopItems = {},          -- Array of item offers currently available in the shop
-    deckViewMode = "remaining",     -- Current mode for the Deck View overlay ("remaining" or "full")
+    -- deckViewMode removed - simplified deck view shows all cards in one view
 
     -- System / Phase State
     gamePhase = "loading",          -- Current game phase

@@ -501,6 +501,7 @@ function love.load()
         sizes = Config.UI or {}, 
         cornerRadius = Config.UI or {}, 
         bubbleConfigData = Config.Bubble or {},
+        scrollConfig = Config.UI.Scrolling or {}, -- Add scrolling configuration to theme
         helpers = {
             calculateOverlayPanelRect = calculateOverlayPanelRect,
             drawOverlayBase = drawOverlayBase,
@@ -1144,6 +1145,129 @@ function love.keypressed(key, scancode, isrepeat)
                 coreGameAPI.resetGame(GameState, Config, Dependencies)
             end
         end
+    end
+end
+
+function love.wheelmoved(x, y)
+    if not GameState or not Config or not UIState or not OverlayManager or not Dependencies then
+        return
+    end
+    
+    -- Convert screen coordinates to virtual coordinates
+    local virtualX = (x - RenderState.offsetX) / RenderState.scale
+    local virtualY = (y - RenderState.offsetY) / RenderState.scale
+    
+    -- Handle wheel events for active overlay
+    if OverlayManager:getActiveOverlayName() then
+        local activeOverlay = OverlayManager:getActiveOverlay()
+        if activeOverlay and activeOverlay.handleWheel then
+            if activeOverlay:handleWheel(virtualX, virtualY, 0, y) then
+                return -- Event was handled by overlay
+            end
+        end
+    end
+end
+
+-- Add comprehensive touch event handlers for touch screen support
+function love.touchpressed(id, x, y, dx, dy, pressure)
+    if not GameState or not Config or not UIState or not OverlayManager or not Dependencies then
+        return
+    end
+    
+    -- Convert screen coordinates to virtual coordinates
+    local virtualX = (x - RenderState.offsetX) / RenderState.scale
+    local virtualY = (y - RenderState.offsetY) / RenderState.scale
+    
+    -- Store touch state for tracking
+    if not GameState.touchState then
+        GameState.touchState = {}
+    end
+    
+    GameState.touchState[id] = {
+        x = virtualX,
+        y = virtualY,
+        startX = virtualX,
+        startY = virtualY,
+        startTime = love.timer.getTime(),
+        isActive = true
+    }
+    
+    -- Handle touch events for active overlay
+    if OverlayManager:getActiveOverlayName() then
+        local activeOverlay = OverlayManager:getActiveOverlay()
+        if activeOverlay and activeOverlay.handleTouchPressed then
+            if activeOverlay:handleTouchPressed(id, virtualX, virtualY, pressure) then
+                return -- Event was handled by overlay
+            end
+        end
+    end
+    
+    -- Fallback to mouse press handling for single touch
+    if id == 1 then -- Primary touch
+        love.mousepressed(x, y, 1, true, 1)
+    end
+end
+
+function love.touchreleased(id, x, y, dx, dy, pressure)
+    if not GameState or not GameState.touchState or not GameState.touchState[id] then
+        return
+    end
+    
+    -- Convert screen coordinates to virtual coordinates
+    local virtualX = (x - RenderState.offsetX) / RenderState.scale
+    local virtualY = (y - RenderState.offsetY) / RenderState.scale
+    
+    local touchData = GameState.touchState[id]
+    touchData.isActive = false
+    touchData.endX = virtualX
+    touchData.endY = virtualY
+    touchData.endTime = love.timer.getTime()
+    
+    -- Handle touch events for active overlay
+    if OverlayManager:getActiveOverlayName() then
+        local activeOverlay = OverlayManager:getActiveOverlay()
+        if activeOverlay and activeOverlay.handleTouchReleased then
+            if activeOverlay:handleTouchReleased(id, virtualX, virtualY, pressure) then
+                return -- Event was handled by overlay
+            end
+        end
+    end
+    
+    -- Fallback to mouse release handling for single touch
+    if id == 1 then -- Primary touch
+        love.mousereleased(x, y, 1, true, 1)
+    end
+end
+
+function love.touchmoved(id, x, y, dx, dy, pressure)
+    if not GameState or not GameState.touchState or not GameState.touchState[id] then
+        return
+    end
+    
+    -- Convert screen coordinates to virtual coordinates
+    local virtualX = (x - RenderState.offsetX) / RenderState.scale
+    local virtualY = (y - RenderState.offsetY) / RenderState.scale
+    
+    local touchData = GameState.touchState[id]
+    local prevX, prevY = touchData.x, touchData.y
+    touchData.x = virtualX
+    touchData.y = virtualY
+    touchData.dx = virtualX - prevX
+    touchData.dy = virtualY - prevY
+    
+    -- Handle touch events for active overlay
+    if OverlayManager:getActiveOverlayName() then
+        local activeOverlay = OverlayManager:getActiveOverlay()
+        if activeOverlay and activeOverlay.handleTouchMoved then
+            if activeOverlay:handleTouchMoved(id, virtualX, virtualY, touchData.dx, touchData.dy, pressure) then
+                return -- Event was handled by overlay
+            end
+        end
+    end
+    
+    -- Fallback to mouse move handling for single touch
+    if id == 1 then -- Primary touch
+        love.mousemoved(x, y, touchData.dx, touchData.dy, true)
     end
 end
 

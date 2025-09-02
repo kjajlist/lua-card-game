@@ -198,6 +198,49 @@ function Draw.drawCardObject(card, config, dependencies, gameState)
         love.graphics.printf(tostring(card.value or 0), 0, valueY, width, "center")
     end
     
+    -- Draw hybrid card effect if this is a hybrid card
+    if card.isHybrid and card.hybridData then
+        local leftType = card.hybridData.leftType
+        local rightType = card.hybridData.rightType
+        
+        if leftType and rightType then
+            -- Draw left half (left type)
+            love.graphics.setColor(leftType.color[1], leftType.color[2], leftType.color[3], cardAlpha)
+            love.graphics.rectangle("fill", 0, 0, width / 2, height, cornerRadius, cornerRadius)
+            
+            -- Draw right half (right type)
+            love.graphics.setColor(rightType.color[1], rightType.color[2], rightType.color[3], cardAlpha)
+            love.graphics.rectangle("fill", width / 2, 0, width / 2, height, cornerRadius, cornerRadius)
+            
+            -- Draw a subtle dividing line
+            love.graphics.setColor(0, 0, 0, 0.3 * cardAlpha)
+            love.graphics.setLineWidth(1)
+            love.graphics.line(width / 2, 0, width / 2, height)
+            
+            -- Draw type indicators on each half
+            local typeFont = fonts.small or fonts.default
+            if typeFont then
+                love.graphics.setFont(typeFont)
+                
+                -- Left type name
+                love.graphics.setColor(1, 1, 1, cardAlpha)
+                local leftName = leftType.name or "???"
+                if #leftName > 8 then leftName = string.sub(leftName, 1, 8) end
+                love.graphics.printf(leftName, 2, height * 0.1, width / 2 - 4, "center")
+                
+                -- Right type name
+                local rightName = rightType.name or "???"
+                if #rightName > 8 then rightName = string.sub(rightName, 1, 8) end
+                love.graphics.printf(rightName, width / 2 + 2, height * 0.1, width / 2 - 4, "center")
+            end
+            
+            -- Draw hybrid indicator
+            love.graphics.setColor(1, 1, 0, cardAlpha) -- Yellow for hybrid
+            love.graphics.setFont(cardValueFont or fonts.default)
+            love.graphics.printf("HYBRID", 0, height * 0.85, width, "center")
+        end
+    end
+    
     love.graphics.pop() -- Restore transform and style
     
     -- Draw magical particle trail (after popping transform so particles aren't affected by card rotation/scale)
@@ -1889,7 +1932,30 @@ function Draw.drawSpellCastingModeUI(gameState, config, dependencies)
     local buttonX = panelX + (panelW - buttonW) / 2
     local buttonY = uiY + panelH - buttonH - 5
     
-    if hasSelectedCard then
+    -- Check if this is a two-card spell
+    local isTwoCardSpell = spell.target == "two_cards"
+    local hasCorrectSelection = false
+    local selectionMessage = ""
+    
+    if isTwoCardSpell then
+        hasCorrectSelection = hasSelectedCard and #gameState.selectedCardIndices == 2
+        if hasSelectedCard then
+            if #gameState.selectedCardIndices == 1 then
+                selectionMessage = "Select second card"
+            elseif #gameState.selectedCardIndices == 2 then
+                selectionMessage = "Ready to cast"
+            else
+                selectionMessage = "Select exactly 2 cards"
+            end
+        else
+            selectionMessage = "Select first card"
+        end
+    else
+        hasCorrectSelection = hasSelectedCard
+        selectionMessage = "Ready to cast"
+    end
+    
+    if hasCorrectSelection then
         love.graphics.setColor(buttonColor)
         love.graphics.rectangle("fill", buttonX, buttonY, buttonW, buttonH, layout.cornerRadius or 3)
         love.graphics.setColor(textColor)
@@ -1901,11 +1967,11 @@ function Draw.drawSpellCastingModeUI(gameState, config, dependencies)
             love.graphics.printf("Cast", buttonX, buttonY + 2, buttonW, "center")
         end
     else
-        -- Show "Select a card" message
+        -- Show selection message
         if smallFont then
             love.graphics.setFont(smallFont)
             love.graphics.setColor({0.6, 0.6, 0.6, 1})
-            love.graphics.printf("Select a card to cast on", buttonX, buttonY + 5, buttonW, "center")
+            love.graphics.printf(selectionMessage, buttonX, buttonY + 5, buttonW, "center")
         end
     end
     

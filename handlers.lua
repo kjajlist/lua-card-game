@@ -215,32 +215,70 @@ function Handlers.handleMouseClick(x, y, gameState, config, dependencies)
                 if x >= buttonX and x <= buttonX + buttonW and y >= buttonY and y <= buttonY + buttonH then
                     -- Cast button clicked
                     if gameState.selectedCardIndices and #gameState.selectedCardIndices > 0 then
-                        local selectedCardIndex = gameState.selectedCardIndices[1]
-                        print(string.format("        -> Casting spell '%s' on card at index %d", spellDefinition.name, selectedCardIndex))
-                        
-                        -- Add sparkle effect to the targeted card before casting
-                        if gameState.hand and gameState.hand[selectedCardIndex] then
-                            local targetCard = gameState.hand[selectedCardIndex]
-                            targetCard.spellSparkleEffect = {
-                                duration = 3.0, -- 3 second sparkle effect (increased for more prominence)
-                                timer = 0,
-                                intensity = 1.0
-                            }
-                            -- Deselect the card visually (remove highlight and move back to row)
-                            targetCard.isHighlighted = false
+                        -- Handle different spell target types
+                        if spellDefinition.target == "two_cards" then
+                            -- Two-card spells require exactly 2 selected cards
+                            if #gameState.selectedCardIndices == 2 then
+                                print(string.format("        -> Casting two-card spell '%s' on cards at indices %d and %d", 
+                                    spellDefinition.name, gameState.selectedCardIndices[1], gameState.selectedCardIndices[2]))
+                                
+                                -- Add sparkle effects to both targeted cards
+                                for _, cardIndex in ipairs(gameState.selectedCardIndices) do
+                                    if gameState.hand and gameState.hand[cardIndex] then
+                                        local targetCard = gameState.hand[cardIndex]
+                                        targetCard.spellSparkleEffect = {
+                                            duration = 3.0,
+                                            timer = 0,
+                                            intensity = 1.0
+                                        }
+                                        targetCard.isHighlighted = false
+                                    end
+                                end
+                                
+                                applySpellEffectFunc(gameState, dependencies, gameState.selectedSpellId, {})
+                                gameState.spellCastingMode = false
+                                gameState.selectedSpellId = nil
+                                gameState.selectedCardIndices = {}
+                                
+                                -- Recalculate hand layout to move cards back to normal positions
+                                if dependencies.sort and dependencies.sort.calculateHandLayout then
+                                    dependencies.sort.calculateHandLayout(gameState, dependencies.config)
+                                end
+                                
+                                clickWasHandled = true
+                            else
+                                print(string.format("        -> Two-card spell '%s' requires exactly 2 selected cards, but %d are selected", 
+                                    spellDefinition.name, #gameState.selectedCardIndices))
+                            end
+                        else
+                            -- Single card spells (original behavior)
+                            local selectedCardIndex = gameState.selectedCardIndices[1]
+                            print(string.format("        -> Casting single-card spell '%s' on card at index %d", spellDefinition.name, selectedCardIndex))
+                            
+                            -- Add sparkle effect to the targeted card before casting
+                            if gameState.hand and gameState.hand[selectedCardIndex] then
+                                local targetCard = gameState.hand[selectedCardIndex]
+                                targetCard.spellSparkleEffect = {
+                                    duration = 3.0, -- 3 second sparkle effect (increased for more prominence)
+                                    timer = 0,
+                                    intensity = 1.0
+                                }
+                                -- Deselect the card visually (remove highlight and move back to row)
+                                targetCard.isHighlighted = false
+                            end
+                            
+                            applySpellEffectFunc(gameState, dependencies, gameState.selectedSpellId, {handIndex = selectedCardIndex})
+                            gameState.spellCastingMode = false
+                            gameState.selectedSpellId = nil
+                            gameState.selectedCardIndices = {}
+                            
+                            -- Recalculate hand layout to move cards back to normal positions
+                            if dependencies.sort and dependencies.sort.calculateHandLayout then
+                                dependencies.sort.calculateHandLayout(gameState, dependencies.config)
+                            end
+                            
+                            clickWasHandled = true
                         end
-                        
-                        applySpellEffectFunc(gameState, dependencies, gameState.selectedSpellId, {handIndex = selectedCardIndex})
-                        gameState.spellCastingMode = false
-                        gameState.selectedSpellId = nil
-                        gameState.selectedCardIndices = {}
-                        
-                        -- Recalculate hand layout to move cards back to normal positions
-                        if dependencies.sort and dependencies.sort.calculateHandLayout then
-                            dependencies.sort.calculateHandLayout(gameState, dependencies.config)
-                        end
-                        
-                        clickWasHandled = true
                     end
                 else
                     -- Check if click is on cancel button

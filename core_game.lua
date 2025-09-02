@@ -208,9 +208,9 @@ local randomGoalTemplates = {
 
 -- Spell Definitions with energyCost
 local SpellDefinitions = {
-    ["transmute_value"] = {
-        id = "transmute_value", name = "Transmute Value", uses = 3, cost = 0, target = "hand_card",
-        energyCost = 10, description = "Reroll Value. Cost: 1 use, 10 Energy.",
+    ["transmute_random"] = {
+        id = "transmute_random", name = "Transmute Random", uses = 3, cost = 0, target = "hand_card",
+        energyCost = 10, description = "Reroll Value (1-10). Cost: 1 use, 10 Energy.",
         effect = function(gameState, dependencies, targetData)
             local handIndex = targetData and targetData.handIndex
             if not handIndex or not gameState.hand[handIndex] then return false end
@@ -218,7 +218,49 @@ local SpellDefinitions = {
             local card = gameState.hand[handIndex]
             local oldValue = card.value
             card.value = math.random(1, 10)
-            print(string.format("Spell 'Transmute Value' cast on '%s'. Value %d -> %d.", card.name, oldValue, card.value))
+            print(string.format("Spell 'Transmute Random' cast on '%s'. Value %d -> %d.", card.name, oldValue, card.value))
+            
+            if dependencies.coreGame.updatePotentialPotion then
+                dependencies.coreGame.updatePotentialPotion(gameState, dependencies)
+            end
+            if dependencies.coreGame.recalculateCurrentScore then
+                dependencies.coreGame.recalculateCurrentScore(gameState)
+            end
+            return true
+        end
+    },
+    ["transmute_increase"] = {
+        id = "transmute_increase", name = "Transmute Increase", uses = 3, cost = 0, target = "hand_card",
+        energyCost = 12, description = "Increase Value by 1 (max 10). Cost: 1 use, 12 Energy.",
+        effect = function(gameState, dependencies, targetData)
+            local handIndex = targetData and targetData.handIndex
+            if not handIndex or not gameState.hand[handIndex] then return false end
+            
+            local card = gameState.hand[handIndex]
+            local oldValue = card.value
+            card.value = math.min(10, card.value + 1)
+            print(string.format("Spell 'Transmute Increase' cast on '%s'. Value %d -> %d.", card.name, oldValue, card.value))
+            
+            if dependencies.coreGame.updatePotentialPotion then
+                dependencies.coreGame.updatePotentialPotion(gameState, dependencies)
+            end
+            if dependencies.coreGame.recalculateCurrentScore then
+                dependencies.coreGame.recalculateCurrentScore(gameState)
+            end
+            return true
+        end
+    },
+    ["transmute_decrease"] = {
+        id = "transmute_decrease", name = "Transmute Decrease", uses = 3, cost = 0, target = "hand_card",
+        energyCost = 12, description = "Decrease Value by 1 (min 1). Cost: 1 use, 12 Energy.",
+        effect = function(gameState, dependencies, targetData)
+            local handIndex = targetData and targetData.handIndex
+            if not handIndex or not gameState.hand[handIndex] then return false end
+            
+            local card = gameState.hand[handIndex]
+            local oldValue = card.value
+            card.value = math.max(1, card.value - 1)
+            print(string.format("Spell 'Transmute Decrease' cast on '%s'. Value %d -> %d.", card.name, oldValue, card.value))
             
             if dependencies.coreGame.updatePotentialPotion then
                 dependencies.coreGame.updatePotentialPotion(gameState, dependencies)
@@ -231,7 +273,7 @@ local SpellDefinitions = {
     },
     ["duplicate_card"] = {
         id = "duplicate_card", name = "Duplicate Card", uses = 1, cost = 0, target = "hand_card",
-        energyCost = 25, description = "Copy card. Cost: 1 use, 25 Energy.",
+        energyCost = 35, description = "Copy card. Cost: 1 use, 35 Energy.",
         effect = function(gameState, dependencies, targetData)
             local handIndex = targetData and targetData.handIndex
             if not handIndex or not gameState.hand[handIndex] then return false end
@@ -289,13 +331,215 @@ local SpellDefinitions = {
             return true
         end
     },
+    ["convert_full"] = {
+        id = "convert_full", name = "Convert Full", uses = 2, cost = 0, target = "two_cards",
+        energyCost = 25, description = "Convert left card to match right card completely. Cost: 1 use, 25 Energy.",
+        effect = function(gameState, dependencies, targetData)
+            if not gameState.selectedCardIndices or #gameState.selectedCardIndices ~= 2 then 
+                print("Spell 'Convert Full' requires exactly 2 selected cards.")
+                return false 
+            end
+            
+            local leftIndex = gameState.selectedCardIndices[1]
+            local rightIndex = gameState.selectedCardIndices[2]
+            
+            if not gameState.hand[leftIndex] or not gameState.hand[rightIndex] then return false end
+            
+            local leftCard = gameState.hand[leftIndex]
+            local rightCard = gameState.hand[rightIndex]
+            local oldName = leftCard.name
+            
+            -- Copy all properties from right card to left card
+            leftCard.id = rightCard.id
+            leftCard.name = rightCard.name
+            leftCard.value = rightCard.value
+            leftCard.family = rightCard.family
+            leftCard.subType = rightCard.subType
+            leftCard.description = rightCard.description
+            leftCard.objectColor = {rightCard.objectColor[1], rightCard.objectColor[2], rightCard.objectColor[3]}
+            
+            print(string.format("Spell 'Convert Full' cast. '%s' -> '%s'.", oldName, leftCard.name))
+            
+            -- Clear selection
+            gameState.selectedCardIndices = {}
+            
+            if dependencies.coreGame.updatePotentialPotion then
+                dependencies.coreGame.updatePotentialPotion(gameState, dependencies)
+            end
+            if dependencies.coreGame.recalculateCurrentScore then
+                dependencies.coreGame.recalculateCurrentScore(gameState)
+            end
+            return true
+        end
+    },
+    ["convert_value"] = {
+        id = "convert_value", name = "Convert Value", uses = 2, cost = 0, target = "two_cards",
+        energyCost = 12, description = "Copy value from right card to left card. Cost: 1 use, 12 Energy.",
+        effect = function(gameState, dependencies, targetData)
+            if not gameState.selectedCardIndices or #gameState.selectedCardIndices ~= 2 then 
+                print("Spell 'Convert Value' requires exactly 2 selected cards.")
+                return false 
+            end
+            
+            local leftIndex = gameState.selectedCardIndices[1]
+            local rightIndex = gameState.selectedCardIndices[2]
+            
+            if not gameState.hand[leftIndex] or not gameState.hand[rightIndex] then return false end
+            
+            local leftCard = gameState.hand[leftIndex]
+            local rightCard = gameState.hand[rightIndex]
+            local oldValue = leftCard.value
+            
+            -- Copy only the value from right card to left card
+            leftCard.value = rightCard.value
+            
+            print(string.format("Spell 'Convert Value' cast on '%s'. Value %d -> %d.", leftCard.name, oldValue, leftCard.value))
+            
+            -- Clear selection
+            gameState.selectedCardIndices = {}
+            
+            if dependencies.coreGame.updatePotentialPotion then
+                dependencies.coreGame.updatePotentialPotion(gameState, dependencies)
+            end
+            if dependencies.coreGame.recalculateCurrentScore then
+                dependencies.coreGame.recalculateCurrentScore(gameState)
+            end
+            return true
+        end
+    },
+    ["convert_type"] = {
+        id = "convert_type", name = "Convert Type", uses = 2, cost = 0, target = "two_cards",
+        energyCost = 12, description = "Copy type from right card to left card. Cost: 1 use, 12 Energy.",
+        effect = function(gameState, dependencies, targetData)
+            if not gameState.selectedCardIndices or #gameState.selectedCardIndices ~= 2 then 
+                print("Spell 'Convert Type' requires exactly 2 selected cards.")
+                return false 
+            end
+            
+            local leftIndex = gameState.selectedCardIndices[1]
+            local rightIndex = gameState.selectedCardIndices[2]
+            
+            if not gameState.hand[leftIndex] or not gameState.hand[rightIndex] then return false end
+            
+            local leftCard = gameState.hand[leftIndex]
+            local rightCard = gameState.hand[rightIndex]
+            local oldName = leftCard.name
+            local oldType = leftCard.subType or "none"
+            
+            -- Copy type properties from right card to left card (keep value)
+            leftCard.id = rightCard.id
+            leftCard.name = rightCard.name
+            leftCard.family = rightCard.family
+            leftCard.subType = rightCard.subType
+            leftCard.description = rightCard.description
+            leftCard.objectColor = {rightCard.objectColor[1], rightCard.objectColor[2], rightCard.objectColor[3]}
+            
+            print(string.format("Spell 'Convert Type' cast on '%s'. Type '%s' -> '%s'.", oldName, oldType, leftCard.subType or "none"))
+            
+            -- Clear selection
+            gameState.selectedCardIndices = {}
+            
+            if dependencies.coreGame.updatePotentialPotion then
+                dependencies.coreGame.updatePotentialPotion(gameState, dependencies)
+            end
+            if dependencies.coreGame.recalculateCurrentScore then
+                dependencies.coreGame.recalculateCurrentScore(gameState)
+            end
+            return true
+        end
+    },
+    ["create_hybrid"] = {
+        id = "create_hybrid", name = "Create Hybrid", uses = 1, cost = 0, target = "two_cards",
+        energyCost = 30, description = "Combine two cards into a hybrid card. Cost: 1 use, 30 Energy.",
+        effect = function(gameState, dependencies, targetData)
+            if not gameState.selectedCardIndices or #gameState.selectedCardIndices ~= 2 then 
+                print("Spell 'Create Hybrid' requires exactly 2 selected cards.")
+                return false 
+            end
+            
+            local leftIndex = gameState.selectedCardIndices[1]
+            local rightIndex = gameState.selectedCardIndices[2]
+            
+            if not gameState.hand[leftIndex] or not gameState.hand[rightIndex] then return false end
+            
+            local leftCard = gameState.hand[leftIndex]
+            local rightCard = gameState.hand[rightIndex]
+            
+            -- Create hybrid card data
+            local hybridCard = {
+                id = "hybrid_" .. leftCard.id .. "_" .. rightCard.id,
+                name = leftCard.name .. "/" .. rightCard.name,
+                value = leftCard.value, -- Use left card's value
+                family = leftCard.family, -- Use left card's family
+                subType = leftCard.subType, -- Use left card's subtype
+                description = "Hybrid: " .. leftCard.name .. " + " .. rightCard.name,
+                objectColor = {leftCard.objectColor[1], leftCard.objectColor[2], leftCard.objectColor[3]},
+                -- Hybrid-specific properties
+                isHybrid = true,
+                hybridData = {
+                    leftType = {
+                        id = leftCard.id,
+                        name = leftCard.name,
+                        color = {leftCard.objectColor[1], leftCard.objectColor[2], leftCard.objectColor[3]},
+                        subType = leftCard.subType
+                    },
+                    rightType = {
+                        id = rightCard.id,
+                        name = rightCard.name,
+                        color = {rightCard.objectColor[1], rightCard.objectColor[2], rightCard.objectColor[3]},
+                        subType = rightCard.subType
+                    }
+                }
+            }
+            
+            -- Replace left card with hybrid
+            gameState.hand[leftIndex] = hybridCard
+            
+            -- Remove right card
+            table.remove(gameState.hand, rightIndex)
+            
+            -- Update selection indices
+            for i = #gameState.selectedCardIndices, 1, -1 do
+                local selIdx = gameState.selectedCardIndices[i]
+                if selIdx == rightIndex then
+                    table.remove(gameState.selectedCardIndices, i)
+                elseif selIdx > rightIndex then
+                    gameState.selectedCardIndices[i] = selIdx - 1
+                end
+            end
+            
+            print(string.format("Spell 'Create Hybrid' cast. Created hybrid: '%s' from '%s' + '%s'.", 
+                hybridCard.name, leftCard.name, rightCard.name))
+            
+            -- Clear selection
+            gameState.selectedCardIndices = {}
+            
+            if dependencies.coreGame.updatePotentialPotion then
+                dependencies.coreGame.updatePotentialPotion(gameState, dependencies)
+            end
+            if dependencies.coreGame.recalculateCurrentScore then
+                dependencies.coreGame.recalculateCurrentScore(gameState)
+            end
+            
+            -- Recalculate hand layout
+            if dependencies.sort and dependencies.sort.calculateHandLayout then
+                dependencies.sort.calculateHandLayout(gameState, dependencies.config)
+            end
+            
+            return true
+        end
+    },
 }
 
 -- Spellbook Definitions
 local SpellbookDefinitions = {
     ["minor_alchemy"] = {
         id = "minor_alchemy", name = "Minor Alchemy Tome", shopItemType = "spellbook", cost = 15,
-        description = "Learn basic transmutation spells.", spells = {"transmute_value"}
+        description = "Learn basic transmutation spells.", spells = {"transmute_random"}
+    },
+    ["advanced_alchemy"] = {
+        id = "advanced_alchemy", name = "Advanced Alchemy Tome", shopItemType = "spellbook", cost = 20,
+        description = "Learn precise transmutation spells.", spells = {"transmute_increase", "transmute_decrease"}
     },
     ["book_of_replication"] = {
         id = "book_of_replication", name = "Book of Replication", shopItemType = "spellbook", cost = 25,
@@ -304,6 +548,10 @@ local SpellbookDefinitions = {
     ["grimoire_of_void"] = {
         id = "grimoire_of_void", name = "Grimoire of the Void", shopItemType = "spellbook", cost = 20,
         description = "Learn the Banish Card spell.", spells = {"banish_card"}
+    },
+    ["tome_of_conversion"] = {
+        id = "tome_of_conversion", name = "Tome of Conversion", shopItemType = "spellbook", cost = 30,
+        description = "Learn card conversion spells.", spells = {"convert_full", "convert_value", "convert_type", "create_hybrid"}
     },
 }
 
@@ -440,6 +688,28 @@ function CoreGame.analyzeHand(selectedCards, dependencies)
             analysis.countsBySubType[card.subType] = (analysis.countsBySubType[card.subType] or 0) + 1
         end
         analysis.highestCardValue = math.max(analysis.highestCardValue, card.value)
+        
+        -- Handle hybrid cards - they count as both of their component types
+        if card.isHybrid and card.hybridData then
+            local leftType = card.hybridData.leftType
+            local rightType = card.hybridData.rightType
+            
+            if leftType then
+                -- Count left type
+                analysis.countsById[leftType.id] = (analysis.countsById[leftType.id] or 0) + 1
+                if leftType.subType then
+                    analysis.countsBySubType[leftType.subType] = (analysis.countsBySubType[leftType.subType] or 0) + 1
+                end
+            end
+            
+            if rightType then
+                -- Count right type
+                analysis.countsById[rightType.id] = (analysis.countsById[rightType.id] or 0) + 1
+                if rightType.subType then
+                    analysis.countsBySubType[rightType.subType] = (analysis.countsBySubType[rightType.subType] or 0) + 1
+                end
+            end
+        end
     end
 
     -- Find largest type match (by card ID)
@@ -1805,7 +2075,7 @@ function CoreGame.resetGame(gameState, config, dependencies)
     gameState.selectingSpellTarget = false
     gameState.drag = {isDragging=false, cardIndex=nil, offsetX=0, offsetY=0}
     gameState.activeOverlay = nil
-    gameState.deckViewMode = "remaining"
+    -- gameState.deckViewMode removed - simplified deck view shows all cards in one view
     gameState.gamePhase = "loading"
     gameState.roundCompletionPending = false
     gameState.canDiscard = true
@@ -1816,7 +2086,7 @@ function CoreGame.resetGame(gameState, config, dependencies)
     gameState.energyElixirs = {}
     
     if spellDefs then
-        local startId="transmute_value"
+        local startId="transmute_random"
         if spellDefs[startId] then 
             gameState.knownSpells[startId] = shallowCopyFunc(spellDefs[startId])
             if gameState.knownSpells[startId].uses and gameState.knownSpells[startId].uses > 0 then

@@ -326,6 +326,11 @@ function OverlayManager:getActive()
     return nil
 end
 
+--- Returns the instance of the currently active overlay, or nil. (Alias for getActive)
+function OverlayManager:getActiveOverlay()
+    return self:getActive()
+end
+
 --- Returns the name (string key) of the currently active overlay, or nil.
 function OverlayManager:getActiveOverlayName()
     return self.activeOverlayName
